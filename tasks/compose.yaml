@@ -1,0 +1,66 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+                             
+  tasks:
+    - name: Composer Update
+      shell: composer update --no-interaction --ignore-platform-req=ext-dom
+      args:
+        chdir: /var/www/examproject
+      environment:
+        COMPOSER_ALLOW_SUPERUSER: 1
+                                      
+    - name: Permission for vendor folder
+      shell: |
+        sudo chown -R root:root /var/www/examproject/vendor
+        sudo chmod -R 755 /var/www/examproject/vendor
+                                     
+    - name: Permission for vendor/composer folder
+      shell: |
+        sudo chown -R root:root /var/www/examproject/vendor/composer
+        sudo chmod -R 755 /var/www/examproject/vendor/composer
+        sudo chgrp -R root /var/www/examproject/vendor/composer
+        sudo chmod -R ug+rwx /var/www/examproject/vendor/composer
+                                          
+    - name: Composer Install
+      shell: composer install --no-interaction --ignore-platform-req=ext-dom
+      args:
+        chdir: /var/www/examproject
+      environment:
+        COMPOSER_ALLOW_SUPERUSER: 1
+                                        
+    - name: Composer Create Project
+      shell: composer create-project --no-interaction --ignore-platform-req=ext-dom
+      args:
+        chdir: /var/www/examproject
+      environment:
+        COMPOSER_ALLOW_SUPERUSER: 1
+                             
+    - name: Enable New Config
+      shell: |
+        a2ensite exampro.conf
+        a2dissite 000-default.conf
+        a2enmod rewrite
+        service apache2 restart
+      become: yes
+                          
+    - name: Generate App Key
+      command: /usr/bin/php /var/www/examproject/artisan key:generate
+      tags: [ 'laravel', 'artisan:key' ]
+                       
+    - name: Set up App Storage link
+      command: /usr/bin/php /var/www/examproject/artisan storage:link
+      tags: [ 'laravel', 'artisan:storage' ]
+                 
+    - name: Run Migrations + Seeders
+      command: /usr/bin/php /var/www/examproject/artisan migrate --seed
+      tags: [ 'laravel', 'artisan:migrate' ]
+               
+              
+    - name: Remove and Restart
+      shell: |
+        sudo a2dismod php7.4
+        sudo a2enmod php8.1
+        sudo systemctl restart apache2
+

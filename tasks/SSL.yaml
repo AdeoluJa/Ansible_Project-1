@@ -1,0 +1,27 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+    #Generating SSL Certificate
+    - name: Install Snapd
+      apt:
+        name:
+          - snapd
+
+    - name: Install Core
+      shell: snap install core
+
+    - name: Refresh Core
+      shell: snap refresh core
+
+    - name: Install Classic Certbot
+      shell: snap install --classic certbot
+
+    - name: Installing Let's Encrypt Client
+      shell: ln -s /snap/bin/certbot /usr/bin/certbot
+
+    - name: Getting an SSL Certificate
+      shell: yes | certbot --apache --agree-tos --redirect -m admin@exam.adeoluja.live -d exam.adeoluja.live
+ 

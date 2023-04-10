@@ -1,0 +1,29 @@
+#!/bin/bash
+
+echo 'Updates'
+sudo apt -y update &&
+sudo apt -y upgrade &&
+
+echo 'Install PostgreSql contrib' &&
+sudo apt install -y postgresql postgresql-contrib &&
+
+echo 'Making sure PostgreSql is running' &&
+sudo systemctl status postgresql &&
+
+echo 'Installing Dependencies' &&
+sudo apt -y install gnupg &&
+
+echo 'PostgreSql Apt  Repo' &&
+sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' &&
+
+echo 'Download PostgreSQL ASC Key' &&
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - &&
+
+echo 'Updates' &&
+sudo apt -y updates &&
+sudo apt -y upgrade &&
+
+echo 'PostgreSql Installation'
+sudo apt -y install postgresql
+
+

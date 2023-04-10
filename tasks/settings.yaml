@@ -1,0 +1,135 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+  vars_files:
+    - vars/pass.yml
+
+  tasks:
+    - name: Install Dependencies
+      apt: name={{ item }} state=latest force_apt_get=yes update_cache=yes
+      loop: ['aptitude']
+                    
+    - name: Install Packages Dependencies
+      apt: name={{ item }} update_cache=yes state=latest
+      loop: [ 'apache2', 'mysql-server', 'python3-pymysql', 'python3-mysqldb', 'mysql-client', 'libmysqlclient-dev',  'git', 'curl', 'zip', 'unzip', 'gnupg2', 'wget', 'php', 'php-mysql', 'php-dev', 'php-xml', 'php-cli', 'php-curl', 'php-zip' ]
+                   
+
+    #PostgreSql   
+    - name: Copy PostgresSql Bash Script
+      template:
+        src: /home/ubuntu/AltSchool-Cloud-Exercise/ExamProject/postgresql.sh.j2
+        dest: /home/ubuntu/postgres.sh
+                        
+    - name: Execute PostgresSql Bash Script
+      command: sh /home/ubuntu/postgres.sh
+                     
+
+    #Composer
+    - name: Download Composer Installation
+      shell: php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+                   
+    - name: Verify Installation
+      shell: php -r "if (hash_file('sha384', 'composer-setup.php') === '55ce33d7678c5a611085589f1f3ddf8b3c52d662cd01d4ba75c0ee0459970c2200a51f492d557530c71c15d8dba01eae') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+                         
+    - name: Run Composer Installer
+      shell: php composer-setup.php
+                    
+    - name: Remover Installation
+      shell: php -r "unlink('composer-setup.php');"
+                
+    - name: Move Composer
+      shell: mv composer.phar /usr/local/bin/composer
+                          
+    - name: Set permissions for composer file
+      file:
+        path: /usr/local/bin/composer
+        mode: a+x
+        state: file
+      become: yes
+               
+    #MySql Configurations
+    - name: Set the root password
+      become: "true"
+      mysql_user:
+        name: root
+        password: "{{ mysql_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+                   
+    - name: Remove all the MySQL Database
+      become: "true"
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_password }}"
+                             
+    - name: Create a new MySQL Database
+      mysql_db:
+        name: examdb
+        state: present
+        login_user: root
+        login_password: "{{ mysql_password }}"
+               
+                  
+    #Laravel
+    - name: Laravel-Realworld-Example
+      git:
+        repo: https://github.com/f1amy/laravel-realworld-example-app.git
+        dest: /var/www/examproject
+      become: yes
+                  
+    - name: Ownership of Examproject folder
+      shell: |
+        sudo chown -R www-data:www-data /var/www/examproject
+        sudo chmod -R 755 /var/www/examproject
+                             
+    - name: Permissions for Laravel storage folder
+      shell: |
+        sudo chgrp -R www-data /var/www/examproject/storage
+        sudo chmod -R ug+rwx /var/www/examproject/storage
+                            
+    - name: Permissions for bootstrap/cache folder
+      shell: |
+        sudo chgrp -R www-data /var/www/examproject/bootstrap/cache
+        sudo chmod -R ug+rwx /var/www/examproject/bootstrap/cache
+                       
+    - name: Additional Permission for Composer Installation
+      shell: sudo chmod -R 777 /var/www/examproject
+             
+    - name: Exampro Apache Config
+      template:
+        src: docs/exampro.conf.j2
+        dest: /etc/apache2/sites-available/exampro.conf
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+       
+    - name: Set up .env file
+      template:
+        src: docs/laravel-env.j2
+        dest: /var/www/examproject/.env
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+                      
+    - name: Set up web php
+      template:
+        src: docs/web.php.j2
+        dest: /var/www/examproject/routes/web.php
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      become: yes
+        
+    - name: Set up htaccess
+      template:
+        src: docs/exam.htaccess.j2
+        dest: /var/www/examproject/.htaccess
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+
